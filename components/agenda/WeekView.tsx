@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addDaysISO,
@@ -43,6 +44,7 @@ const STATUS_CELL: Record<SessionStatus, string> = {
 };
 
 export function WeekView({ sessions, patients, selectedDate, onSelectedDateChange }: WeekViewProps) {
+  const router = useRouter();
   const weekDates = getWeekDatesISO(selectedDate);
   const patientById = new Map(patients.map((p) => [p.id, p]));
   const weekSessions = sessions.filter((s) => weekDates.includes(s.scheduled_date));
@@ -118,16 +120,18 @@ export function WeekView({ sessions, patients, selectedDate, onSelectedDateChang
                             const patient = patientById.get(s.patient_id);
                             if (!patient) return null;
                             return (
-                              <div
+                              <button
                                 key={s.id}
+                                type="button"
+                                onClick={() => router.push(`/pacientes/${patient.id}`)}
                                 className={clsx(
-                                  "truncate rounded-md border px-1.5 py-1 text-[11px] font-medium",
+                                  "truncate rounded-md border px-1.5 py-1 text-left text-[11px] font-medium transition-colors hover:brightness-95",
                                   STATUS_CELL[s.status]
                                 )}
                                 title={patient.name}
                               >
                                 {patient.name}
-                              </div>
+                              </button>
                             );
                           })}
                         </div>

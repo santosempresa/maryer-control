@@ -5,23 +5,42 @@ import { Award, Calendar, Percent, TrendingUp } from "lucide-react";
 import { PageContent, PageHeader } from "@/components/layout/Page";
 import { PageSpinner } from "@/components/ui/Skeleton";
 import { BarChart } from "@/components/ui/BarChart";
+import { Select } from "@/components/ui/Input";
 import { KpiCard } from "@/components/billing/KpiCard";
 import { PlanBreakdownRow } from "@/components/billing/PlanBreakdownRow";
 import { useToast } from "@/components/ui/ToastProvider";
 import { getSessions } from "@/lib/db";
 import {
   attendanceRate,
-  computeLastNMonthsSummaries,
+  computeLastNMonthsSummariesEndingAt,
   mostAttendedPlan,
   percentChange,
 } from "@/lib/billing";
 import { formatCompactCurrencyBRL, formatCurrencyBRL } from "@/lib/plans";
-import { getMonthShortLabel } from "@/lib/date-utils";
+import { getMonthShortLabel, parseYearMonth, todayISO } from "@/lib/date-utils";
 import type { Session } from "@/lib/types";
+
+const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
 
 export default function FaturamentoPage() {
   const { showToast } = useToast();
   const [sessions, setSessions] = useState<Session[] | null>(null);
+  const todayParts = parseYearMonth(todayISO());
+  const [year, setYear] = useState(todayParts.year);
+  const [month, setMonth] = useState(todayParts.month);
 
   useEffect(() => {
     getSessions()
@@ -35,7 +54,9 @@ export default function FaturamentoPage() {
 
   if (!sessions) return <PageSpinner />;
 
-  const summaries = computeLastNMonthsSummaries(sessions, 6);
+  const yearOptions = [todayParts.year - 1, todayParts.year, todayParts.year + 1];
+
+  const summaries = computeLastNMonthsSummariesEndingAt(sessions, year, month, 6);
   const current = summaries[summaries.length - 1];
   const previous = summaries.length > 1 ? summaries[summaries.length - 2] : null;
 
@@ -64,8 +85,25 @@ export default function FaturamentoPage() {
 
   return (
     <>
-      <PageHeader title="Faturamento" description="Resumo financeiro e indicadores do mês atual" />
+      <PageHeader title="Faturamento" description="Resumo financeiro e indicadores por período" />
       <PageContent className="space-y-6">
+        <div className="flex flex-wrap gap-3">
+          <Select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="w-auto">
+            {MONTH_NAMES.map((name, idx) => (
+              <option key={name} value={idx + 1}>
+                {name}
+              </option>
+            ))}
+          </Select>
+          <Select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-auto">
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </Select>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <KpiCard
             label="Sessões realizadas"
@@ -74,7 +112,7 @@ export default function FaturamentoPage() {
             delta={sessionsChange === null ? undefined : { value: sessionsChange, goodDirection: "up" }}
           />
           <KpiCard
-            label="Faturamento do mês"
+            label={`Faturamento de ${getMonthShortLabel(current.year, current.month)}`}
             value={formatCurrencyBRL(current.totalRevenue)}
             icon={TrendingUp}
             delta={revenueChange === null ? undefined : { value: revenueChange, goodDirection: "up" }}
@@ -99,7 +137,9 @@ export default function FaturamentoPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-white p-4">
-          <h2 className="text-sm font-medium text-foreground">Por plano (mês atual)</h2>
+          <h2 className="text-sm font-medium text-foreground">
+            Por plano ({getMonthShortLabel(current.year, current.month)})
+          </h2>
           <p className="mb-1 text-xs text-muted">Sessões realizadas e faturamento por tipo de plano</p>
           <div className="divide-y divide-border">
             {current.breakdown.map((b) => (

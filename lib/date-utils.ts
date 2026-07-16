@@ -149,14 +149,22 @@ export function isTodayISO(iso: string): boolean {
   return iso === todayISO();
 }
 
-export function getLastNMonths(n: number): { year: number; month: number }[] {
-  const { year: curYear, month: curMonth } = parseYearMonth(todayISO());
+export function getLastNMonthsEndingAt(
+  year: number,
+  month: number,
+  n: number
+): { year: number; month: number }[] {
   const result: { year: number; month: number }[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(curYear, curMonth - 1 - i, 1);
+    const d = new Date(year, month - 1 - i, 1);
     result.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
   }
   return result;
+}
+
+export function getLastNMonths(n: number): { year: number; month: number }[] {
+  const { year: curYear, month: curMonth } = parseYearMonth(todayISO());
+  return getLastNMonthsEndingAt(curYear, curMonth, n);
 }
 
 export function getMonthShortLabel(year: number, month: number): string {

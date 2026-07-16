@@ -1,6 +1,6 @@
 import type { PlanType, Session } from "./types";
 import { PLANS } from "./plans";
-import { getLastNMonths, monthEndISO, monthStartISO } from "./date-utils";
+import { getLastNMonths, getLastNMonthsEndingAt, monthEndISO, monthStartISO } from "./date-utils";
 
 export interface PlanBreakdownItem {
   plan: PlanType;
@@ -53,6 +53,17 @@ export function computeMonthSummary(sessions: Session[], year: number, month: nu
 
 export function computeLastNMonthsSummaries(sessions: Session[], n: number): MonthSummary[] {
   return getLastNMonths(n).map(({ year, month }) => computeMonthSummary(sessions, year, month));
+}
+
+export function computeLastNMonthsSummariesEndingAt(
+  sessions: Session[],
+  year: number,
+  month: number,
+  n: number
+): MonthSummary[] {
+  return getLastNMonthsEndingAt(year, month, n).map(({ year: y, month: m }) =>
+    computeMonthSummary(sessions, y, m)
+  );
 }
 
 export function mostAttendedPlan(summary: MonthSummary): PlanBreakdownItem | null {
