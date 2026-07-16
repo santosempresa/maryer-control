@@ -5,6 +5,12 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
+// A clínica opera em Manaus. O servidor (Vercel) roda em UTC, então "hoje"
+// calculado com new Date() local vira o dia seguinte a partir das 20h em
+// Manaus, fazendo sessões de hoje serem reconciliadas como falta por engano.
+// Fixamos o fuso aqui pra "hoje" ser sempre o dia civil de Manaus.
+const APP_TIMEZONE = "America/Manaus";
+
 export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
@@ -15,7 +21,7 @@ export function fromISODate(iso: string): Date {
 }
 
 export function todayISO(): string {
-  return toISODate(new Date());
+  return new Date().toLocaleDateString("en-CA", { timeZone: APP_TIMEZONE });
 }
 
 export function addDaysISO(iso: string, days: number): string {
@@ -144,10 +150,10 @@ export function isTodayISO(iso: string): boolean {
 }
 
 export function getLastNMonths(n: number): { year: number; month: number }[] {
-  const now = new Date();
+  const { year: curYear, month: curMonth } = parseYearMonth(todayISO());
   const result: { year: number; month: number }[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = new Date(curYear, curMonth - 1 - i, 1);
     result.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
   }
   return result;

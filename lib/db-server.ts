@@ -1,6 +1,6 @@
 import "server-only";
 import type { NewPatientInput, NewSessionInput, Patient, Session, SessionStatus } from "./types";
-import { todayISO } from "./date-utils";
+import { parseYearMonth, todayISO } from "./date-utils";
 import {
   generateFutureSessionsFromToday,
   generateSessionsForPatientMonth,
@@ -193,8 +193,8 @@ export async function removePendingSessionsForPatientFrom(
 // ---------------------------------------------------------------------------
 
 export async function generateAndSaveSessionsForCurrentMonth(patient: Patient): Promise<Session[]> {
-  const now = new Date();
-  const sessions = generateSessionsForPatientMonth(patient, now.getFullYear(), now.getMonth() + 1);
+  const { year, month } = parseYearMonth(todayISO());
+  const sessions = generateSessionsForPatientMonth(patient, year, month);
   return addSessions(sessions);
 }
 
