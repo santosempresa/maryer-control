@@ -79,6 +79,10 @@ export default function AgendaPage() {
             patients={data.patients}
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
+            onSelectSession={(date) => {
+              setSelectedDate(date);
+              setTab("dia");
+            }}
           />
         )}
         {data && tab === "mes" && (

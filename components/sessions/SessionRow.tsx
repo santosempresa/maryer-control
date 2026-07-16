@@ -84,63 +84,65 @@ export function SessionRow({ session, patient, onChange, showDate }: SessionRowP
   }
 
   return (
-    <div
-      className={clsx(
-        "rounded-xl border border-border bg-white px-4 py-3.5",
-        editable && "cursor-pointer transition-colors hover:border-primary/40"
-      )}
-      role={editable ? "button" : undefined}
-      tabIndex={editable ? 0 : undefined}
-      onClick={editable ? () => setReopenOpen(true) : undefined}
-      onKeyDown={
-        editable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") setReopenOpen(true);
-            }
-          : undefined
-      }
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="text-sm font-medium text-foreground">{session.scheduled_time}</span>
-            <span className="text-sm font-medium text-foreground">{patient.name}</span>
-            {showDate && <span className="text-xs text-muted">{session.scheduled_date}</span>}
+    <>
+      <div
+        className={clsx(
+          "rounded-xl border border-border bg-white px-4 py-3.5",
+          editable && "cursor-pointer transition-colors hover:border-primary/40"
+        )}
+        role={editable ? "button" : undefined}
+        tabIndex={editable ? 0 : undefined}
+        onClick={editable ? () => setReopenOpen(true) : undefined}
+        onKeyDown={
+          editable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") setReopenOpen(true);
+              }
+            : undefined
+        }
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="text-sm font-medium text-foreground">{session.scheduled_time}</span>
+              <span className="text-sm font-medium text-foreground">{patient.name}</span>
+              {showDate && <span className="text-xs text-muted">{session.scheduled_date}</span>}
+            </div>
+            <p className="mt-0.5 text-xs text-muted">{PLANS[patient.plan].label}</p>
+            {session.status === "rescheduled" && session.reschedule_reason && (
+              <p className="mt-1 text-xs text-muted">Motivo: {session.reschedule_reason}</p>
+            )}
           </div>
-          <p className="mt-0.5 text-xs text-muted">{PLANS[patient.plan].label}</p>
-          {session.status === "rescheduled" && session.reschedule_reason && (
-            <p className="mt-1 text-xs text-muted">Motivo: {session.reschedule_reason}</p>
-          )}
+          <StatusBadge status={session.status} />
         </div>
-        <StatusBadge status={session.status} />
+
+        {session.status === "pending" && (
+          <div className="mt-3 flex gap-2">
+            <Button variant="success" className="flex-1" onClick={handleConfirm} loading={confirming}>
+              <Check size={16} />
+              Confirmar
+            </Button>
+            <Button variant="info" className="flex-1" onClick={() => setRescheduleOpen(true)}>
+              <RotateCcw size={16} />
+              Remarcar
+            </Button>
+            <Button variant="danger" className="flex-1" onClick={handleMarkMissed} loading={markingMissed}>
+              <X size={16} />
+              Faltou
+            </Button>
+          </div>
+        )}
+
+        {session.status === "rescheduled" && (
+          <button
+            type="button"
+            onClick={handleCancelReschedule}
+            className="mt-2 text-xs font-medium text-danger hover:underline"
+          >
+            Cancelar remarcação
+          </button>
+        )}
       </div>
-
-      {session.status === "pending" && (
-        <div className="mt-3 flex gap-2">
-          <Button variant="success" className="flex-1" onClick={handleConfirm} loading={confirming}>
-            <Check size={16} />
-            Confirmar
-          </Button>
-          <Button variant="info" className="flex-1" onClick={() => setRescheduleOpen(true)}>
-            <RotateCcw size={16} />
-            Remarcar
-          </Button>
-          <Button variant="danger" className="flex-1" onClick={handleMarkMissed} loading={markingMissed}>
-            <X size={16} />
-            Faltou
-          </Button>
-        </div>
-      )}
-
-      {session.status === "rescheduled" && (
-        <button
-          type="button"
-          onClick={handleCancelReschedule}
-          className="mt-2 text-xs font-medium text-danger hover:underline"
-        >
-          Cancelar remarcação
-        </button>
-      )}
 
       <RescheduleSheet
         open={rescheduleOpen}
@@ -162,6 +164,6 @@ export function SessionRow({ session, patient, onChange, showDate }: SessionRowP
         loading={reopening}
         onConfirm={handleReopen}
       />
-    </div>
+    </>
   );
 }
