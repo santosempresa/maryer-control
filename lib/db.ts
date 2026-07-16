@@ -85,6 +85,10 @@ export function confirmSession(id: string): Promise<Session | undefined> {
   return callDb("confirmSession", [id]);
 }
 
+export function markSessionMissed(id: string): Promise<Session | undefined> {
+  return callDb("markSessionMissed", [id]);
+}
+
 export function rescheduleSession(
   id: string,
   newDateISO: string,

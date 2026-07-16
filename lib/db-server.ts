@@ -1,5 +1,5 @@
 import "server-only";
-import type { NewPatientInput, NewSessionInput, Patient, Session, SessionStatus } from "./types";
+import type { NewPatientInput, NewSessionInput, Patient, Session } from "./types";
 import { parseYearMonth, todayISO } from "./date-utils";
 import {
   generateFutureSessionsFromToday,
@@ -62,17 +62,7 @@ export async function setPatientStatus(id: string, status: Patient["status"]): P
 // Sessions
 // ---------------------------------------------------------------------------
 
-async function reconcilePastPendingSessions(): Promise<void> {
-  const { error } = await supabase
-    .from("sessions")
-    .update({ status: "missed" satisfies SessionStatus })
-    .eq("status", "pending")
-    .lt("scheduled_date", todayISO());
-  if (error) throw error;
-}
-
 export async function getSessions(): Promise<Session[]> {
-  await reconcilePastPendingSessions();
   const { data, error } = await supabase.from("sessions").select("*").order("scheduled_date");
   if (error) throw error;
   return data ?? [];
@@ -139,6 +129,10 @@ export async function confirmSession(id: string): Promise<Session | undefined> {
   return updateSession(id, { status: "done" });
 }
 
+export async function markSessionMissed(id: string): Promise<Session | undefined> {
+  return updateSession(id, { status: "missed" });
+}
+
 export async function rescheduleSession(
   id: string,
   newDateISO: string,
@@ -168,11 +162,7 @@ export async function cancelReschedule(originalSessionId: string): Promise<Sessi
     .eq("rescheduled_from", originalSessionId);
   if (deleteError) throw deleteError;
 
-  const original = await getSession(originalSessionId);
-  if (!original) return undefined;
-
-  const nextStatus: SessionStatus = original.scheduled_date < todayISO() ? "missed" : "pending";
-  return updateSession(originalSessionId, { status: nextStatus });
+  return updateSession(originalSessionId, { status: "pending" });
 }
 
 export async function removePendingSessionsForPatientFrom(
@@ -222,6 +212,7 @@ export const dbFunctions = {
   updateSession,
   deleteSession,
   confirmSession,
+  markSessionMissed,
   rescheduleSession,
   cancelReschedule,
   removePendingSessionsForPatientFrom,
