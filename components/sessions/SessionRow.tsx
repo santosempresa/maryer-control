@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import clsx from "clsx";
 import { Check, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
+import { ConfirmSheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { RescheduleSheet } from "./RescheduleSheet";
-import { cancelReschedule, confirmSession, markSessionMissed } from "@/lib/db";
+import { cancelReschedule, confirmSession, markSessionMissed, updateSession } from "@/lib/db";
 import { PLANS } from "@/lib/plans";
 import type { Patient, Session } from "@/lib/types";
 
@@ -22,6 +24,10 @@ export function SessionRow({ session, patient, onChange, showDate }: SessionRowP
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [markingMissed, setMarkingMissed] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopening, setReopening] = useState(false);
+
+  const editable = session.status === "done" || session.status === "missed";
 
   async function handleConfirm() {
     setConfirming(true);
@@ -62,8 +68,38 @@ export function SessionRow({ session, patient, onChange, showDate }: SessionRowP
     }
   }
 
+  async function handleReopen() {
+    setReopening(true);
+    try {
+      await updateSession(session.id, { status: "pending" });
+      showToast("info", `Sessão de ${patient.name} reaberta para correção.`);
+      setReopenOpen(false);
+      onChange();
+    } catch (error) {
+      console.error(error);
+      showToast("error", "Não foi possível reabrir a sessão.");
+    } finally {
+      setReopening(false);
+    }
+  }
+
   return (
-    <div className="rounded-xl border border-border bg-white px-4 py-3.5">
+    <div
+      className={clsx(
+        "rounded-xl border border-border bg-white px-4 py-3.5",
+        editable && "cursor-pointer transition-colors hover:border-primary/40"
+      )}
+      role={editable ? "button" : undefined}
+      tabIndex={editable ? 0 : undefined}
+      onClick={editable ? () => setReopenOpen(true) : undefined}
+      onKeyDown={
+        editable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") setReopenOpen(true);
+            }
+          : undefined
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -115,6 +151,16 @@ export function SessionRow({ session, patient, onChange, showDate }: SessionRowP
           setRescheduleOpen(false);
           onChange();
         }}
+      />
+
+      <ConfirmSheet
+        open={reopenOpen}
+        onClose={() => setReopenOpen(false)}
+        title="Reabrir sessão?"
+        description={`A sessão de ${patient.name} volta para pendente, aí é só corrigir com Confirmar, Remarcar ou Faltou.`}
+        confirmLabel="Reabrir"
+        loading={reopening}
+        onConfirm={handleReopen}
       />
     </div>
   );
