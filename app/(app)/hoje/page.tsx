@@ -48,7 +48,9 @@ export default function HojePage() {
     <>
       <PageHeader
         title="Hoje"
-        description={`${capitalize(formatWeekdayFull(today))}, ${formatDisplayDateFull(today)}`}
+        description={`${capitalize(formatWeekdayFull(today))}, ${formatDisplayDateFull(today)} · ${sorted.length} ${
+          sorted.length === 1 ? "atendimento" : "atendimentos"
+        }`}
       />
       <PageContent>
         {sorted.length === 0 && (

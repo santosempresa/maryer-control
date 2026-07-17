@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Zap } from "lucide-react";
+import { Plus, Search, X, Zap } from "lucide-react";
 import clsx from "clsx";
 import { PageContent, PageHeader } from "@/components/layout/Page";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { PageSpinner } from "@/components/ui/Skeleton";
 import { PatientListItem } from "@/components/patients/PatientListItem";
 import { QuickSessionSheet } from "@/components/patients/QuickSessionSheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { getPatients } from "@/lib/db";
-import type { Patient } from "@/lib/types";
+import { getPatients, getSessions } from "@/lib/db";
+import { todayISO } from "@/lib/date-utils";
+import { matchesSearch } from "@/lib/text";
+import type { Patient, Session } from "@/lib/types";
 
 type FilterType = "active" | "inactive" | "all";
 
@@ -24,12 +27,18 @@ const FILTERS: { value: FilterType; label: string }[] = [
 export default function PacientesPage() {
   const { showToast } = useToast();
   const [patients, setPatients] = useState<Patient[] | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [filter, setFilter] = useState<FilterType>("active");
+  const [search, setSearch] = useState("");
   const [avulsoOpen, setAvulsoOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setPatients(await getPatients());
+      const [loadedPatients, loadedSessions] = await Promise.all([getPatients(), getSessions()]);
+      // Paciente excluído continua no banco só para o histórico dele seguir no
+      // faturamento e no relatório, então nunca aparece nas listas.
+      setPatients(loadedPatients.filter((p) => p.status !== "deleted"));
+      setSessions(loadedSessions);
     } catch (error) {
       console.error(error);
       setPatients([]);
@@ -42,11 +51,30 @@ export default function PacientesPage() {
     load();
   }, [load]);
 
-  const filtered = useMemo(() => {
+  // Quantas sessões cada paciente já realizou no mês corrente, pra avisar quem passou
+  // do que o plano cobre.
+  const doneThisMonthByPatient = useMemo(() => {
+    const counts = new Map<string, number>();
+    const monthPrefix = todayISO().slice(0, 7);
+    for (const s of sessions) {
+      if (s.status !== "done" || !s.scheduled_date.startsWith(monthPrefix)) continue;
+      counts.set(s.patient_id, (counts.get(s.patient_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [sessions]);
+
+  const byStatus = useMemo(() => {
     if (!patients) return [];
-    const list = filter === "all" ? patients : patients.filter((p) => p.status === filter);
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return filter === "all" ? patients : patients.filter((p) => p.status === filter);
   }, [patients, filter]);
+
+  const filtered = useMemo(
+    () =>
+      [...byStatus]
+        .filter((p) => matchesSearch(p.name, search))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+    [byStatus, search]
+  );
 
   const counts = useMemo(() => {
     if (!patients) return { active: 0, inactive: 0, all: 0 };
@@ -56,6 +84,8 @@ export default function PacientesPage() {
       all: patients.length,
     };
   }, [patients]);
+
+  const searching = search.trim().length > 0;
 
   return (
     <>
@@ -78,6 +108,30 @@ export default function PacientesPage() {
         }
       />
       <PageContent>
+        <div className="mb-3 relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+          />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar paciente pelo nome"
+            aria-label="Buscar paciente pelo nome"
+            className="pl-9 pr-9"
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Limpar busca"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-background-alt"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
         <div className="mb-4 flex gap-2">
           {FILTERS.map((f) => (
             <button
@@ -108,13 +162,27 @@ export default function PacientesPage() {
 
         {patients !== null && filtered.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-white px-4 py-10 text-center text-sm text-muted">
-            Nenhum paciente encontrado.
+            {searching
+              ? `Nenhum paciente encontrado para "${search.trim()}".`
+              : "Nenhum paciente encontrado."}
           </div>
+        )}
+
+        {patients !== null && searching && filtered.length > 0 && (
+          <p className="mb-2 text-xs text-muted">
+            {filtered.length === 1
+              ? "1 paciente encontrado"
+              : `${filtered.length} pacientes encontrados`}
+          </p>
         )}
 
         <div className="space-y-2">
           {filtered.map((p) => (
-            <PatientListItem key={p.id} patient={p} />
+            <PatientListItem
+              key={p.id}
+              patient={p}
+              doneThisMonth={doneThisMonthByPatient.get(p.id) ?? 0}
+            />
           ))}
         </div>
       </PageContent>

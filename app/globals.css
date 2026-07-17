@@ -11,6 +11,8 @@
   --success: #16a34a;
   --danger: #dc2626;
   --info: #3b82f6;
+  /* Aviso: algo pra ela conferir, sem ser erro (ex.: paciente passou do que o plano cobre). */
+  --warning: #b45309;
 }
 
 @theme inline {
@@ -24,6 +26,7 @@
   --color-success: var(--success);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-warning: var(--warning);
   --font-sans: var(--font-inter);
 }
 

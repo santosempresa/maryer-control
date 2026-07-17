@@ -1,10 +1,23 @@
 import type { Patient, Session } from "./types";
+import { PLANS, isOneOffPatient } from "./plans";
 import { getDaysInMonth } from "./date-utils";
 
 export interface ReportRow {
   patient: Patient;
   daysDone: Set<number>;
   total: number;
+  // Só nos atendimentos avulsos. O caso que mais precisa disso é o avulso cobrado pela
+  // tarifa de um plano semanal (paciente de outro fisioterapeuta): sem a nota ele fica
+  // idêntico a um paciente de pacote no relatório do estúdio.
+  note?: string;
+}
+
+function reportNote(patient: Patient): string | undefined {
+  if (!isOneOffPatient(patient)) return undefined;
+  const plan = PLANS[patient.plan];
+  return plan.recurring
+    ? `Avulso, plano ${plan.label.toLowerCase()}`
+    : `Avulso, ${plan.label.toLowerCase()}`;
 }
 
 export interface ReportTotals {
@@ -48,7 +61,7 @@ export function buildReport(
       const daysDone = new Set(
         patientSessions.map((s) => Number(s.scheduled_date.slice(8, 10)))
       );
-      return { patient, daysDone, total: patientSessions.length };
+      return { patient, daysDone, total: patientSessions.length, note: reportNote(patient) };
     })
     .sort((a, b) => a.patient.name.localeCompare(b.patient.name, "pt-BR"));
 

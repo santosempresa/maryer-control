@@ -1,5 +1,5 @@
 import type { NewPatientInput, NewSessionInput, Patient, PlanType } from "./types";
-import { PLANS } from "./plans";
+import { isOneOffPatient } from "./plans";
 import { generateMonthWeekdayDates } from "./date-utils";
 
 export function makeSession(
@@ -24,9 +24,7 @@ export function generateSessionsForPatientMonth(
   year: number,
   month: number
 ): NewSessionInput[] {
-  const plan = PLANS[patient.plan];
-
-  if (!plan.recurring) {
+  if (isOneOffPatient(patient)) {
     const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
     if (patient.start_date.startsWith(monthPrefix)) {
       return [makeSession(patient.id, patient.start_date, patient.time, patient.plan)];
@@ -43,9 +41,8 @@ export function generateSessionsForPatientMonth(
 // Only the today-forward slice, so past history (done/missed/rescheduled) is never touched.
 export function generateFutureSessionsFromToday(patient: Patient, today: string): NewSessionInput[] {
   const [year, month] = today.split("-").map(Number);
-  const plan = PLANS[patient.plan];
 
-  if (!plan.recurring) {
+  if (isOneOffPatient(patient)) {
     return generateSessionsForPatientMonth(patient, year, month).filter(
       (s) => s.scheduled_date >= today
     );

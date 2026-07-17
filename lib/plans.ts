@@ -1,4 +1,4 @@
-import type { PlanType, Weekday } from "./types";
+import type { Patient, PlanType, Weekday } from "./types";
 
 export interface PlanConfig {
   type: PlanType;
@@ -67,6 +67,23 @@ export const PLAN_ORDER: PlanType[] = [
 ];
 
 export const RECURRING_PLANS: PlanType[] = ["1x_semana", "2x_semana", "3x_semana"];
+
+// Um atendimento avulso é definido por não ter dias fixos, não pelo plano: além da
+// aula experimental e da fisioterapia, ela também atende paciente de outro
+// fisioterapeuta em sessão isolada, cobrando a tarifa do plano semanal daquele
+// paciente. Nesse caso o plano diz só o preço, e os dias ficam vazios.
+export function isOneOffSchedule(plan: PlanType, weekdays: Weekday[]): boolean {
+  return !PLANS[plan].recurring || weekdays.length === 0;
+}
+
+export function isOneOffPatient(patient: Pick<Patient, "plan" | "weekdays">): boolean {
+  return isOneOffSchedule(patient.plan, patient.weekdays);
+}
+
+// Quantas sessões o plano cobre no mês: 4 semanas x a frequência semanal.
+export function monthlyAllowance(plan: PlanType): number {
+  return PLANS[plan].sessionsPerMonthReference;
+}
 
 export interface WeekdayConfig {
   code: Weekday;

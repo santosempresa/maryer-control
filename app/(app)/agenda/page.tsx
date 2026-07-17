@@ -83,6 +83,7 @@ export default function AgendaPage() {
               setSelectedDate(date);
               setTab("dia");
             }}
+            onChange={load}
           />
         )}
         {data && tab === "mes" && (

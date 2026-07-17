@@ -26,6 +26,9 @@ export function StatusBadge({ status, className }: { status: SessionStatus; clas
 const PATIENT_STATUS_CONFIG: Record<PatientStatus, { label: string; className: string }> = {
   active: { label: "Ativo", className: "bg-green-100 text-success" },
   inactive: { label: "Inativo", className: "bg-gray-100 text-muted" },
+  // Não aparece nas listas de paciente, mas o relatório do mês ainda mostra quem foi
+  // excluído depois de já ter sido atendido.
+  deleted: { label: "Excluído", className: "bg-gray-100 text-muted" },
 };
 
 export function PatientStatusBadge({ status }: { status: PatientStatus }) {

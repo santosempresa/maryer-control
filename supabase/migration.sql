@@ -26,7 +26,9 @@ create table if not exists patients (
   weekdays jsonb not null default '[]'::jsonb,
   time text not null,
   start_date date not null,
-  status text not null default 'active' check (status in ('active', 'inactive')),
+  -- 'deleted' é exclusão lógica: some das listas do app, mas a linha fica de pé
+  -- para as sessões já realizadas continuarem valendo no faturamento/relatório.
+  status text not null default 'active' check (status in ('active', 'inactive', 'deleted')),
   created_at timestamptz not null default now()
 );
 

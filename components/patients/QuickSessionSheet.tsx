@@ -4,12 +4,12 @@ import { useState } from "react";
 import clsx from "clsx";
 import { Sheet } from "@/components/ui/Sheet";
 import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addSessions, createPatient } from "@/lib/db";
 import { generateSessionsForPatientMonth } from "@/lib/session-generator";
-import { PLANS } from "@/lib/plans";
+import { PLANS, RECURRING_PLANS } from "@/lib/plans";
 import { parseYearMonth, todayISO } from "@/lib/date-utils";
 import type { PlanType } from "@/lib/types";
 
@@ -19,20 +19,35 @@ interface QuickSessionSheetProps {
   onDone: () => void;
 }
 
-const AVULSO_PLANS: PlanType[] = ["experimental", "fisioterapia"];
+// "plano" cobre o caso de ela atender paciente de outro fisioterapeuta: não é
+// recorrente, mas ela recebe a tarifa do plano semanal daquele paciente.
+type AvulsoKind = "experimental" | "fisioterapia" | "plano";
+
+const KINDS: { value: AvulsoKind; label: string }[] = [
+  { value: "experimental", label: "Aula experimental" },
+  { value: "fisioterapia", label: "Fisioterapia" },
+  { value: "plano", label: "Plano" },
+];
+
+const DEFAULT_PLAN: PlanType = "1x_semana";
 
 export function QuickSessionSheet({ open, onClose, onDone }: QuickSessionSheetProps) {
   const { showToast } = useToast();
   const [name, setName] = useState("");
-  const [plan, setPlan] = useState<PlanType>("experimental");
+  const [kind, setKind] = useState<AvulsoKind>("experimental");
+  const [plan, setPlan] = useState<PlanType>(DEFAULT_PLAN);
   const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState("08:00");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // O plano do avulso só define o preço da sessão: sem dias fixos, não vira pacote.
+  const effectivePlan: PlanType = kind === "plano" ? plan : kind;
+
   function reset() {
     setName("");
-    setPlan("experimental");
+    setKind("experimental");
+    setPlan(DEFAULT_PLAN);
     setDate(todayISO());
     setTime("08:00");
     setError(null);
@@ -58,7 +73,7 @@ export function QuickSessionSheet({ open, onClose, onDone }: QuickSessionSheetPr
     try {
       const patient = await createPatient({
         name: name.trim(),
-        plan,
+        plan: effectivePlan,
         weekdays: [],
         time,
         start_date: date,
@@ -66,7 +81,7 @@ export function QuickSessionSheet({ open, onClose, onDone }: QuickSessionSheetPr
       });
       const { year, month } = parseYearMonth(date);
       await addSessions(generateSessionsForPatientMonth(patient, year, month));
-      showToast("success", `${PLANS[plan].label} registrada para ${name.trim()}.`);
+      showToast("success", `${PLANS[effectivePlan].label} registrada para ${name.trim()}.`);
       reset();
       onDone();
     } catch (error) {
@@ -89,7 +104,7 @@ export function QuickSessionSheet({ open, onClose, onDone }: QuickSessionSheetPr
     >
       <div className="space-y-4">
         <p className="text-sm text-muted">
-          Pra aula experimental ou fisioterapia pontual, sem pacote semanal e sem dias fixos.
+          Atendimento pontual, sem pacote semanal e sem dias fixos.
         </p>
         <Field label="Nome">
           <Input
@@ -100,24 +115,38 @@ export function QuickSessionSheet({ open, onClose, onDone }: QuickSessionSheetPr
         </Field>
         <Field label="Tipo">
           <div className="flex gap-2">
-            {AVULSO_PLANS.map((p) => (
+            {KINDS.map((k) => (
               <button
-                key={p}
+                key={k.value}
                 type="button"
-                onClick={() => setPlan(p)}
-                aria-pressed={plan === p}
+                onClick={() => setKind(k.value)}
+                aria-pressed={kind === k.value}
                 className={clsx(
-                  "flex-1 rounded-xl border px-3 py-3 text-sm font-medium transition-colors",
-                  plan === p
+                  "flex-1 rounded-xl border px-2 py-3 text-sm font-medium transition-colors",
+                  kind === k.value
                     ? "border-primary bg-primary text-white"
                     : "border-border bg-white text-foreground hover:bg-background-alt"
                 )}
               >
-                {PLANS[p].label}
+                {k.label}
               </button>
             ))}
           </div>
         </Field>
+        {kind === "plano" && (
+          <Field
+            label="Plano do paciente"
+            hint="Define quanto ela recebe por este atendimento. Use quando ela atende paciente de outro fisioterapeuta."
+          >
+            <Select value={plan} onChange={(e) => setPlan(e.target.value as PlanType)}>
+              {RECURRING_PLANS.map((p) => (
+                <option key={p} value={p}>
+                  {PLANS[p].label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Field label="Data">
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />

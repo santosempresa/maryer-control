@@ -50,7 +50,10 @@ export function DayView({
           <p className="text-sm font-medium text-foreground">
             {capitalize(formatWeekdayFull(selectedDate))}
           </p>
-          <p className="text-xs text-muted">{formatDisplayDateFull(selectedDate)}</p>
+          <p className="text-xs text-muted">
+            {formatDisplayDateFull(selectedDate)} · {daySessions.length}{" "}
+            {daySessions.length === 1 ? "atendimento" : "atendimentos"}
+          </p>
         </div>
         <button
           type="button"

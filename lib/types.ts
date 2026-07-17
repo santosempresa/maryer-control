@@ -7,7 +7,9 @@ export type PlanType =
 
 export type Weekday = "seg" | "ter" | "qua" | "qui" | "sex" | "sab";
 
-export type PatientStatus = "active" | "inactive";
+// "deleted" é exclusão lógica: o paciente some das listas, mas a linha continua
+// existindo para as sessões já realizadas seguirem contando no faturamento.
+export type PatientStatus = "active" | "inactive" | "deleted";
 
 export type SessionStatus = "pending" | "done" | "rescheduled" | "missed";
 
@@ -23,6 +25,15 @@ export interface Patient {
 }
 
 export type NewPatientInput = Omit<Patient, "id" | "created_at">;
+
+export interface DeletePatientResult {
+  // 0 = não havia histórico e o paciente saiu do banco de vez.
+  keptSessions: number;
+}
+
+// Como a agenda do paciente estava antes de uma edição, pra saber quais sessões
+// pendentes são sobra do padrão antigo.
+export type PreviousSchedule = Pick<Patient, "plan" | "weekdays" | "time" | "start_date">;
 
 export type NewSessionInput = Omit<Session, "id" | "created_at">;
 

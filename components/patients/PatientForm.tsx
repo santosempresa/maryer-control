@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Field } from "@/components/ui/Field";
 import { Input, Select } from "@/components/ui/Input";
 import { WeekdayPicker } from "@/components/ui/WeekdayPicker";
 import { Button } from "@/components/ui/Button";
-import { PLAN_ORDER, PLANS, RECURRING_PLANS } from "@/lib/plans";
+import { PLAN_ORDER, PLANS, RECURRING_PLANS, isOneOffPatient, monthlyAllowance } from "@/lib/plans";
 import { todayISO } from "@/lib/date-utils";
 import type { NewPatientInput, Patient, PatientStatus, PlanType, Weekday } from "@/lib/types";
 
@@ -30,10 +31,16 @@ export function PatientForm({
   const [status, setStatus] = useState<PatientStatus>(initialValue?.status ?? "active");
   const [error, setError] = useState<string | null>(null);
 
-  const isRecurring = PLANS[plan].recurring;
-  // Avulso plans now come from "Atendimento avulso"; only surface them here for existing avulso patients.
-  const planOptions =
-    initialValue && !PLANS[initialValue.plan].recurring ? PLAN_ORDER : RECURRING_PLANS;
+  // Atendimento avulso (inclusive o que usa preço de plano) não tem dias fixos: aqui
+  // ele só pode ter o preço e a data corrigidos, senão viraria pacote sem querer.
+  const editingOneOff = initialValue ? isOneOffPatient(initialValue) : false;
+  const isRecurring = PLANS[plan].recurring && !editingOneOff;
+  // Avulso já existente mostra todos os planos; cadastro normal só os semanais,
+  // porque avulso novo entra pelo botão "Atendimento avulso".
+  const planOptions = editingOneOff ? PLAN_ORDER : RECURRING_PLANS;
+
+  const sessionsPerWeek = PLANS[plan].sessionsPerWeek;
+  const overPlan = isRecurring && weekdays.length > sessionsPerWeek;
 
   function handlePlanChange(nextPlan: PlanType) {
     setPlan(nextPlan);
@@ -75,7 +82,14 @@ export function PatientForm({
         />
       </Field>
 
-      <Field label="Plano" hint="Define o valor por sessão e a frequência semanal.">
+      <Field
+        label="Plano"
+        hint={
+          editingOneOff
+            ? "Atendimento avulso: o plano define só o valor desta sessão."
+            : "Define o valor por sessão e a frequência semanal."
+        }
+      >
         <Select value={plan} onChange={(e) => handlePlanChange(e.target.value as PlanType)}>
           {planOptions.map((p) => (
             <option key={p} value={p}>
@@ -88,6 +102,16 @@ export function PatientForm({
       {isRecurring && (
         <Field label="Dias da semana de atendimento">
           <WeekdayPicker value={weekdays} onChange={setWeekdays} />
+          {overPlan && (
+            <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-warning">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>
+                {weekdays.length} dias marcados no plano {PLANS[plan].label.toLowerCase()}, que cobre{" "}
+                {sessionsPerWeek} por semana e {monthlyAllowance(plan)} por mês. Dá pra salvar assim,
+                só confira se o plano está certo.
+              </span>
+            </p>
+          )}
         </Field>
       )}
 

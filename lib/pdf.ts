@@ -29,7 +29,9 @@ export function exportReportPDF(report: ReportData): void {
   const dayColumns = Array.from({ length: report.daysInMonth }, (_, i) => String(i + 1));
   const head = [["Paciente", ...dayColumns, "Total"]];
   const body = report.rows.map((row) => [
-    row.patient.name,
+    // O estúdio precisa distinguir o avulso do paciente de pacote, então a nota vai
+    // numa segunda linha da própria célula do nome.
+    row.note ? `${row.patient.name}\n${row.note}` : row.patient.name,
     ...Array.from({ length: report.daysInMonth }, (_, i) =>
       row.daysDone.has(i + 1) ? "X" : ""
     ),

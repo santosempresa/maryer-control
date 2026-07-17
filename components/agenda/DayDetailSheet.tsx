@@ -35,6 +35,9 @@ export function DayDetailSheet({ date, sessions, patients, onClose, onChange }: 
         <p className="py-6 text-center text-sm text-muted">Nenhuma sessão prevista.</p>
       ) : (
         <div className="space-y-2">
+          <p className="pb-1 text-xs text-muted">
+            {sorted.length} {sorted.length === 1 ? "atendimento" : "atendimentos"} neste dia
+          </p>
           {sorted.map((session) => {
             const patient = patientById.get(session.patient_id);
             if (!patient) return null;

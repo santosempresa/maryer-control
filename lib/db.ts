@@ -1,4 +1,11 @@
-import type { NewPatientInput, NewSessionInput, Patient, Session } from "./types";
+import type {
+  DeletePatientResult,
+  NewPatientInput,
+  NewSessionInput,
+  Patient,
+  PreviousSchedule,
+  Session,
+} from "./types";
 
 async function callDb<T>(fn: string, args: unknown[] = []): Promise<T> {
   const res = await fetch("/api/db", {
@@ -45,6 +52,10 @@ export function setPatientStatus(id: string, status: Patient["status"]): Promise
   return callDb("setPatientStatus", [id, status]);
 }
 
+export function deletePatient(id: string): Promise<DeletePatientResult> {
+  return callDb("deletePatient", [id]);
+}
+
 // ---------------------------------------------------------------------------
 // Sessions
 // ---------------------------------------------------------------------------
@@ -89,6 +100,14 @@ export function markSessionMissed(id: string): Promise<Session | undefined> {
   return callDb("markSessionMissed", [id]);
 }
 
+export function moveSession(
+  id: string,
+  newDateISO: string,
+  newTime: string
+): Promise<Session | undefined> {
+  return callDb("moveSession", [id, newDateISO, newTime]);
+}
+
 export function rescheduleSession(
   id: string,
   newDateISO: string,
@@ -116,6 +135,9 @@ export function generateAndSaveSessionsForCurrentMonth(patient: Patient): Promis
   return callDb("generateAndSaveSessionsForCurrentMonth", [patient]);
 }
 
-export function regenerateFutureSessionsForCurrentMonth(patient: Patient): Promise<Session[]> {
-  return callDb("regenerateFutureSessionsForCurrentMonth", [patient]);
+export function regenerateFutureSessionsForCurrentMonth(
+  patient: Patient,
+  previous?: PreviousSchedule
+): Promise<Session[]> {
+  return callDb("regenerateFutureSessionsForCurrentMonth", [patient, previous]);
 }

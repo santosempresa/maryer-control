@@ -27,8 +27,13 @@ export function ReportTable({ report }: { report: ReportData }) {
         <tbody>
           {report.rows.map((row) => (
             <tr key={row.patient.id}>
-              <td className="sticky left-0 z-10 border-b border-r border-border bg-white px-3 py-2 font-medium text-foreground">
-                {row.patient.name}
+              <td className="sticky left-0 z-10 border-b border-r border-border bg-white px-3 py-2 text-foreground">
+                <span className="font-medium">{row.patient.name}</span>
+                {row.note && (
+                  <span className="mt-0.5 block text-[10px] font-normal text-warning">
+                    {row.note}
+                  </span>
+                )}
               </td>
               {dayNumbers.map((day) => (
                 <td key={day} className="border-b border-border px-1 py-2 text-center">
