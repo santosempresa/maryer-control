@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import clsx from "clsx";
 import { AlertTriangle } from "lucide-react";
 import { Field } from "@/components/ui/Field";
 import { Input, Select } from "@/components/ui/Input";
 import { WeekdayPicker } from "@/components/ui/WeekdayPicker";
 import { Button } from "@/components/ui/Button";
-import { PLAN_ORDER, PLANS, RECURRING_PLANS, isOneOffPatient, monthlyAllowance } from "@/lib/plans";
+import { PLAN_ORDER, PLANS, RECURRING_PLANS, isOneOffPatient } from "@/lib/plans";
 import { todayISO } from "@/lib/date-utils";
 import type { NewPatientInput, Patient, PatientStatus, PlanType, Weekday } from "@/lib/types";
 
@@ -39,14 +40,22 @@ export function PatientForm({
   // porque avulso novo entra pelo botão "Atendimento avulso".
   const planOptions = editingOneOff ? PLAN_ORDER : RECURRING_PLANS;
 
-  const sessionsPerWeek = PLANS[plan].sessionsPerWeek;
-  const overPlan = isRecurring && weekdays.length > sessionsPerWeek;
+  // O plano é semanal, então ele manda na quantidade de dias: 1x pede 1 dia, 2x pede 2,
+  // 3x pede 3. Exceção pontual (o paciente veio noutro dia) se resolve arrastando o card
+  // na agenda, sem mexer no cadastro.
+  const requiredDays = PLANS[plan].sessionsPerWeek;
+  const daysMatch = weekdays.length === requiredDays;
 
   function handlePlanChange(nextPlan: PlanType) {
     setPlan(nextPlan);
-    if (!PLANS[nextPlan].recurring) {
+    const next = PLANS[nextPlan];
+    if (!next.recurring) {
       setWeekdays([]);
+      return;
     }
+    // Descer de plano invalida a escolha atual. Limpar é mais honesto do que cortar um
+    // dia por ela, porque qual dia sai muda a agenda e o quanto ela recebe.
+    if (weekdays.length > next.sessionsPerWeek) setWeekdays([]);
   }
 
   function handleSubmit(e: FormEvent) {
@@ -55,8 +64,12 @@ export function PatientForm({
       setError("Informe o nome do paciente.");
       return;
     }
-    if (isRecurring && weekdays.length === 0) {
-      setError("Selecione ao menos um dia da semana.");
+    if (isRecurring && !daysMatch) {
+      setError(
+        `O plano ${PLANS[plan].label.toLowerCase()} pede ${requiredDays} ${
+          requiredDays === 1 ? "dia" : "dias"
+        } da semana, e você marcou ${weekdays.length}.`
+      );
       return;
     }
     if (!time) {
@@ -100,18 +113,23 @@ export function PatientForm({
       </Field>
 
       {isRecurring && (
-        <Field label="Dias da semana de atendimento">
-          <WeekdayPicker value={weekdays} onChange={setWeekdays} />
-          {overPlan && (
-            <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-warning">
-              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-              <span>
-                {weekdays.length} dias marcados no plano {PLANS[plan].label.toLowerCase()}, que cobre{" "}
-                {sessionsPerWeek} por semana e {monthlyAllowance(plan)} por mês. Dá pra salvar assim,
-                só confira se o plano está certo.
-              </span>
-            </p>
-          )}
+        <Field
+          label="Dias da semana de atendimento"
+          hint={`O plano ${PLANS[plan].label.toLowerCase()} pede ${requiredDays} ${
+            requiredDays === 1 ? "dia" : "dias"
+          }.`}
+        >
+          <WeekdayPicker value={weekdays} onChange={setWeekdays} max={requiredDays} />
+          <p
+            className={clsx(
+              "mt-2 flex items-center gap-1.5 text-xs font-medium",
+              daysMatch ? "text-muted" : "text-warning"
+            )}
+          >
+            {!daysMatch && <AlertTriangle size={13} className="shrink-0" />}
+            {weekdays.length} de {requiredDays} {requiredDays === 1 ? "dia marcado" : "dias marcados"}
+            {weekdays.length > requiredDays && ", desmarque para poder salvar"}
+          </p>
         </Field>
       )}
 

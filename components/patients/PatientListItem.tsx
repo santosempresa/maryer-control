@@ -17,10 +17,19 @@ export function PatientListItem({
     ? formatDisplayDateFull(patient.start_date)
     : patient.weekdays.map(weekdayLabel).join(", ");
 
-  // O plano é semanal, então no mês ele cobre 4x a frequência (4, 8 ou 12 sessões).
-  // Passar disso não é proibido, mas ela precisa ver pra decidir se o plano mudou.
+  const plan = PLANS[patient.plan];
+  const requiredDays = plan.sessionsPerWeek;
+  const marked = patient.weekdays.length;
+
+  // Cadastro incoerente: o plano é semanal, então 2x tem que ter 2 dias. O formulário
+  // trava isso desde 16/07, mas quem foi cadastrado antes ficou torto e não seria achado
+  // se ela não abrisse um por um. Só ela pode decidir se o certo é o plano ou os dias.
+  const daysMismatch = !oneOff && marked !== requiredDays;
+
+  // Passou do que o plano cobre no mês (4x a frequência semanal). Fica escondido quando
+  // os dias estão errados, porque aí a causa é o cadastro e não o comparecimento.
   const allowance = monthlyAllowance(patient.plan);
-  const overPlan = !oneOff && doneThisMonth > allowance;
+  const overPlan = !oneOff && !daysMismatch && doneThisMonth > allowance;
 
   return (
     <Link
@@ -33,8 +42,19 @@ export function PatientListItem({
           <PatientStatusBadge status={patient.status} />
         </div>
         <p className="mt-1 truncate text-xs text-muted">
-          {PLANS[patient.plan].label} · {schedule} às {patient.time}
+          {plan.label} · {schedule} às {patient.time}
         </p>
+        {daysMismatch && (
+          <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-warning">
+            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            <span>
+              Plano {plan.label.toLowerCase()} com {marked} {marked === 1 ? "dia" : "dias"}{" "}
+              {marked === 1 ? "marcado" : "marcados"}. Troque o plano ou{" "}
+              {marked > requiredDays ? "deixe" : "marque"} {requiredDays}{" "}
+              {requiredDays === 1 ? "dia" : "dias"}.
+            </span>
+          </p>
+        )}
         {overPlan && (
           <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-warning">
             <AlertTriangle size={13} className="shrink-0" />
